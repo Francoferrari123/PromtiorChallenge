@@ -1,0 +1,17 @@
+fastapi
+langserve[all]
+langchain
+langchain_text_splitters
+langchain-community
+langchain-huggingface
+langchain_ollama
+langchain_openai
+pypdf
+pydantic
+typing
+beautifulsoup4
+uvicorn
+langchain_core
+sentence-transformers
+faiss-cpu
+redis

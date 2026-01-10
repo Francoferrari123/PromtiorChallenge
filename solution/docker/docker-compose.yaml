@@ -1,0 +1,73 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    entrypoint: [ "/bin/bash", "-c", "ollama serve & sleep 5 && ollama pull mistral && wait" ]
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: [ "redis-server", "--appendonly", "yes" ]
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: promtior-api
+    depends_on:
+      - ollama
+      - redis
+    ports:
+      - "7000:8000"
+    env_file:
+      - ../backend/src/.env
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OLLAMA_BASE_URL: http://ollama:11434
+      REDIS_URL: redis://redis:6379
+      VECTORSTORE_PATH: /app/faiss_index
+      PDF_PATH: /app/RAG_data/promtior.pdf
+    volumes:
+      - ../backend/faiss_index:/app/faiss_index
+      - ../backend/RAG_data:/app/RAG_data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_AGENT_API_URL: /api
+    container_name: promtior-frontend
+    volumes:
+      - ../frontend:/app # Mount the project directory for live updates
+    environment:
+      # Ensure file watching works correctly
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_AGENT_API_URL=/api
+
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: promtior-nginx
+    ports:
+      - "1234:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - api
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  redis_data:

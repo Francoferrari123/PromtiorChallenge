@@ -1,0 +1,1 @@
+export type UserRole = 'human' | 'ai' | 'system';
